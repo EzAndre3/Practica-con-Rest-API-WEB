@@ -1,83 +1,47 @@
-import User from '../models/users.model.js';
+import User from "../models/users.model.js";
+import { getSalt, hashPassword } from "../utils/hash.js";
 
 export const getUsers = async (req, res) => {
-  try {
-    const users = await User.find().sort({ createdAt: -1 });
+    // Implementation for getting all users
+    const users = await User.find();
     res.json(users);
-  } catch (error) {
-    res.status(500).json({ msg: 'Error al obtener usuarios', error: error.message });
-  }
 };
 
 export const getUser = async (req, res) => {
-  try {
+    // Implementation for getting a single user
     const { id } = req.params;
     const user = await User.findById(id);
-
-    if (!user) {
-      return res.status(404).json({ msg: 'Usuario no encontrado' });
-    }
-
     res.json(user);
-  } catch (error) {
-    res.status(500).json({ msg: 'Error al obtener el usuario', error: error.message });
-  }
 };
 
-export const postUser = async (req, res) => {
-  try {
+export const createUser = async (req, res) => {
     const { name, username, password } = req.body;
-
-    if (!name || !username || !password) {
-      return res.status(400).json({ msg: 'Nombre, usuario y contraseña son obligatorios' });
-    }
-
-    const existingUser = await User.findOne({ username });
-
-    if (existingUser) {
-      return res.status(400).json({ msg: 'El nombre de usuario ya existe' });
-    }
-
-    const user = new User({ name, username, password });
-    await user.save();
-    res.status(201).json(user);
-  } catch (error) {
-    res.status(500).json({ msg: 'Error al crear usuario', error: error.message });
-  }
+    const salt = getSalt();
+    const hashedPassword = hashPassword(password, salt);
+    const newUser = new User({ name, username, password: hashedPassword });
+    await newUser.save();
+    res.status(201).json(newUser);
 };
 
 export const putUser = async (req, res) => {
-  try {
     const { id } = req.params;
     const { name, username, password } = req.body;
+    const updatedData = {};
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      { name, username, password },
-      { new: true, runValidators: true }
-    );
-
-    if (!user) {
-      return res.status(404).json({ msg: 'Usuario no encontrado' });
+    if (name) updatedData.name = name;
+    if (username) updatedData.username = username;
+    if (password) {
+        const salt = getSalt();
+        updatedData.password = hashPassword(password, salt);
     }
 
+    const user = await User.findByIdAndUpdate(id, updatedData, { new: true });
     res.json(user);
-  } catch (error) {
-    res.status(500).json({ msg: 'Error al actualizar usuario', error: error.message });
-  }
 };
 
 export const delUser = async (req, res) => {
-  try {
+    // Implementation for deleting a user
     const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
-
-    if (!user) {
-      return res.status(404).json({ msg: 'Usuario no encontrado' });
-    }
-
-    res.json({ msg: 'Usuario eliminado', user });
-  } catch (error) {
-    res.status(500).json({ msg: 'Error al eliminar usuario', error: error.message });
-  }
+    await User.findByIdAndDelete(id);
+    res.status(204).send();
 };
